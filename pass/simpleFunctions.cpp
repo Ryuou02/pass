@@ -16,7 +16,9 @@ evaluated = true;
 std::string verboseBuffer;
 #define LOG(A) verboseBuffer += A ;
 #define DISPLAY_LOG obj->displayMessage(verboseBuffer);
+#define IFDEBUG(A)	A
 #else
+#define IFDEBUG(A)
 #define LOG(A)
 #define DISPLAY_LOG
 #endif
@@ -535,7 +537,7 @@ void ExecCalcCommand(std::string command, ofstream &filewrite, commandLine &obj2
 	const char* commands[2];
 	commands[0] = "calc";
 	const char *comm = command.c_str();
-	filewrite << command;
+	filewrite << command << '\n';
 	if (!isComment(command)) {
 		commands[1] = comm;
 		calc(2, commands, &obj2);
@@ -561,37 +563,35 @@ int calc(int k, const char** args, commandLine* obj) {
 				ExecCalcCommand(obj2.getCommand(), filewrite, obj2);
 			}
 			catch (int a) {
-				switch (a) {
-				case EXIT_PROGRAM:
-					filewrite.close();
-					return 0;
+				try {
+					switch (a) {
+					case EXIT_PROGRAM:
+						filewrite.close();
+						return 0;
 
-				case CTRL_S:
-					obj2.displayMessage("Enter file name to save to");
-					filewrite.close();
-					copyFile("calc.temp", obj2.getCommand().c_str());
-					filewrite.open("calc.temp",ios::app);
-					break;
-				case CTRL_L:
-					obj2.displayMessage("Enter file name to load");
-					loadFile(obj2.getCommand(), obj2,filewrite);
-					break;
+					case CTRL_S:
+						obj2.displayMessage("Enter file name to save to");
+						filewrite.close();
+						copyFile("calc.temp", obj2.getCommand().c_str());
+						filewrite.open("calc.temp", ios::app);
+						break;
+					case CTRL_L:
+						obj2.displayMessage("Enter file name to load");
+						loadFile(obj2.getCommand(), obj2, filewrite);
+						break;
+					}
+				}
+				catch (std::string error) {
+					obj2.displayError(error);
 				}
 			}
 		}
 		return 0;
 	}
 	std::string useful_string = "";
-	for (int i = 1; i < k; i++)
-	{
-		obj->displayMessage(args[i]);
-	}
-
-	obj->displayMessage(to_string(k));
 
 	for (int i = 1; i < k; i++)
 	{
-		obj->displayMessage(args[i]);
 		for (int j = 0; j < strlen(args[i]); j++)
 		{
 			if (args[i][j] != 32) {
@@ -611,7 +611,8 @@ int calc(int k, const char** args, commandLine* obj) {
 		}
 		else {
 			mainVariableMap[getVarName(LHS)] = eval(compile(getExpression(useful_string), mainVariableMap));
-			obj->displayMessage("received:" + useful_string);
+			IFDEBUG(obj->displayMessage("received:" + useful_string);)
+
 			obj->displayOutput(to_string(mainVariableMap[getVarName(LHS)]));
 			DISPLAY_LOG
 			return 1;
